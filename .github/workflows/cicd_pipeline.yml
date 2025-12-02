@@ -1,0 +1,97 @@
+name: Multi-DB CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  db-automation:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: nyc311
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -prootpass"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpass
+      MYSQL_DB: nyc311
+      NYC311_YEAR: 2023
+      NYC311_LIMIT: 50000
+      NYC311_CSV: ./data/nyc_311_2023.csv
+      BATCH_SIZE: 5000
+      MONGO_DB: nyc311
+      MONGO_COLLECTION: service_requests
+      MONGO_SYNC_LIMIT: 50000
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -prootpass --silent; then
+              echo "MySQL is up"; break
+            fi
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Run SQL migrations
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -prootpass < sql/001_create_database.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -prootpass nyc311 < sql/010_create_service_requests.sql
+
+#      - name: Download NYC 311 sample data
+#        run: |
+#          python scripts/download_nyc311.py
+
+      - name: Generate sample NYC 311 data  # ← Replaces download
+        run: 
+          python scripts/generate_sample_data.py
+
+      - name: Ingest into MySQL
+        run: |
+          python scripts/ingest_mysql.py
+
+      - name: Sync to MongoDB
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}  # Atlas connection string [web:44][web:47]
+        run: |
+          python scripts/sync_to_mongo.py
+
+      - name: Run concurrent operations
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          python scripts/concurrent_ops.py
+
+      - name: Validate cross-DB consistency
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          python scripts/validate_consistency.py

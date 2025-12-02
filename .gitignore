@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+downloads/
+
+# Virtual environments
+.venv/
+
+# Data files (regenerate in CI)
+data/
+*.csv
+
+# Environment
+.env
+.env.local
+.env.*.local

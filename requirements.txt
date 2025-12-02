@@ -1,0 +1,7 @@
+pandas
+numpy
+pymysql
+psutil
+python-dotenv
+requests
+pymongo
