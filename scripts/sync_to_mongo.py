@@ -56,14 +56,9 @@ def sync_to_mongo(limit: int = 50000):
     if not MONGO_URI:
         raise RuntimeError("MONGODB_URI is not set")
 
-    # Fix SSL for GitHub Actions + Atlas
-    from ssl import create_default_context
-    ssl_context = create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-
     rows = fetch_mysql_rows(limit=limit)
-    client = MongoClient(MONGO_URI, ssl_context=ssl_context, serverSelectionTimeoutMS=60000)
+    # Fix: Use ssl=True instead of ssl_context for GitHub Actions compatibility
+    client = MongoClient(MONGO_URI, ssl=True, serverSelectionTimeoutMS=60000)
     db = client[MONGO_DB]
     coll = db[MONGO_COLLECTION]
 
