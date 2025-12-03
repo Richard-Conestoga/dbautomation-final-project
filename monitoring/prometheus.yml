@@ -1,0 +1,41 @@
+# Prometheus Configuration for NYC 311 Database Monitoring
+
+global:
+  scrape_interval: 15s      # How often to scrape targets
+  evaluation_interval: 15s  # How often to evaluate rules
+  external_labels:
+    monitor: 'nyc311-monitor'
+    environment: 'local'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Sync validation metrics (will add when we run the metrics server)
+  - job_name: 'nyc311-sync-metrics'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+        labels:
+          service: 'sync-validation'
+    # Don't fail if metrics server isn't running
+    scrape_timeout: 5s
+
+  # MySQL Exporter (will add in next step)
+  # - job_name: 'mysql'
+  #   static_configs:
+  #     - targets: ['mysql-exporter:9104']
+
+  # MongoDB Exporter (will add in next step)
+  # - job_name: 'mongodb'
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+
+  # Node Exporter for system metrics (will add in next step)
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
