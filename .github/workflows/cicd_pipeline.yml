@@ -29,7 +29,7 @@ jobs:
       MYSQL_USER: root
       MYSQL_PASSWORD: rootpass
       MYSQL_DB: nyc311
-      NYC311_CSV: ./data/nyc_311_2023_sample.csv  # ← FIXED: match generated file
+      NYC311_CSV: ./data/nyc_311_2023_sample.csv
       BATCH_SIZE: 5000
       MONGO_DB: nyc311
       MONGO_COLLECTION: service_requests
@@ -49,7 +49,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install MySQL client  # ← NEW: Fix mysql command missing
+      - name: Install MySQL client
         run: |
           sudo apt-get update
           sudo apt-get install -y default-mysql-client
@@ -64,7 +64,7 @@ jobs:
             sleep 2
           done
 
-      - name: Run SQL migrations  # ← FIXED: single file only
+      - name: Run SQL migrations
         run: |
           mysql -h 127.0.0.1 -P 3306 -u root -prootpass < sql/001_create_database.sql
 

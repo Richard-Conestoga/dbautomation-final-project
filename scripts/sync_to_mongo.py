@@ -62,7 +62,7 @@ def cleanup_previous_sync(conn_mysql, client_mongo, filename: str):
 
 def fetch_mysql_rows(conn, start_date: str, end_date: str, limit: int = None):
     """Fetch rows from specific date range (incremental)."""
-    with conn.cursor(cursorclass=pymysql.cursors.DictCursor) as cur:
+    with conn.cursor() as cur:
         if limit:
             cur.execute("""
                 SELECT unique_key, created_date, closed_date, agency,
@@ -81,7 +81,12 @@ def fetch_mysql_rows(conn, start_date: str, end_date: str, limit: int = None):
                 WHERE created_date >= %s AND created_date < %s
             """, (start_date, end_date))
         
-        rows = cur.fetchall()
+        # Fetch as tuples, convert to dicts manually
+        rows = []
+        columns = [desc[0] for desc in cur.description]
+        for row_tuple in cur.fetchall():
+            row_dict = dict(zip(columns, row_tuple))
+            rows.append(row_dict)
     
     # Convert Decimal to float for MongoDB
     for row in rows:

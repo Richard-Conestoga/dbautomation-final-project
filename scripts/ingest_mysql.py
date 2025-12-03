@@ -17,7 +17,7 @@ USER = os.getenv("MYSQL_USER", "root")
 PWD = os.getenv("MYSQL_PASSWORD", "")
 DB = os.getenv("MYSQL_DB", "nyc311")
 
-CSV_FILENAME = os.getenv("NYC311_CSV", "./data/nyc_311_2023_sample.csv")
+CSV_FILENAME = os.getenv("NYC311_CSV", "./data/nyc_311_2023_sample.csv")     #Change here to use sample dataset or full dataset
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "10000"))  # Tuned: balances memory (100MB/chunk) vs commit overhead
 
 # NYC 311 standard datetime format [web:21][web:23]
