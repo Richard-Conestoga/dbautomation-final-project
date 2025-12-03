@@ -81,8 +81,22 @@ def sync_to_mongo(limit: int = 50000):
         docs.append(doc)
 
     if docs:
-        coll.insert_many(docs, ordered=False)
-        print(f"[📥] Inserted {len(docs)} docs into MongoDB collection '{MONGO_COLLECTION}'")
+        # Insert in batches to avoid BSON size limit (16MB)
+        batch_size = 1000
+        total_inserted = 0
+        for i in range(0, len(docs), batch_size):
+            batch = docs[i:i + batch_size]
+            try:
+                coll.insert_many(batch, ordered=False)
+                total_inserted += len(batch)
+                print(f"[📥] Inserted batch {i//batch_size + 1}: {len(batch)} docs (total: {total_inserted:,})")
+            except Exception as e:
+                # Skip duplicates, continue with next batch
+                if "duplicate key" in str(e).lower():
+                    print(f"[⚠️] Batch {i//batch_size + 1}: Skipped duplicates")
+                else:
+                    raise
+        print(f"[✅] Sync complete: {total_inserted:,} docs inserted into '{MONGO_COLLECTION}'")
     else:
         print("[ℹ] No rows to sync")
 
