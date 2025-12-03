@@ -17,7 +17,7 @@ MONGO_DB = os.getenv("MONGO_DB", "nyc311")
 MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "service_requests")
 
 
-def fetch_mysql_rows(limit: int = 50000):
+def fetch_mysql_rows(limit: int = None):
     conn = pymysql.connect(
         host=MYSQL_HOST,
         port=MYSQL_PORT,
@@ -29,16 +29,27 @@ def fetch_mysql_rows(limit: int = 50000):
         cursorclass=pymysql.cursors.DictCursor,
     )
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT unique_key, created_date, closed_date, agency,
-                   complaint_type, descriptor, borough,
-                   latitude, longitude
-            FROM service_requests
-            LIMIT %s
-            """,
-            (limit,),
-        )
+        if limit and limit > 0:
+            cur.execute(
+                """
+                SELECT unique_key, created_date, closed_date, agency,
+                       complaint_type, descriptor, borough,
+                       latitude, longitude
+                FROM service_requests
+                LIMIT %s
+                """,
+                (limit,),
+            )
+        else:
+            # No limit - sync all rows (for local development)
+            cur.execute(
+                """
+                SELECT unique_key, created_date, closed_date, agency,
+                       complaint_type, descriptor, borough,
+                       latitude, longitude
+                FROM service_requests
+                """
+            )
         rows = cur.fetchall()
     
     # Convert Decimal to float for MongoDB compatibility
@@ -57,8 +68,9 @@ def sync_to_mongo(limit: int = 50000):
         raise RuntimeError("MONGODB_URI is not set")
 
     rows = fetch_mysql_rows(limit=limit)
-    # Fix: Use ssl=True instead of ssl_context for GitHub Actions compatibility
-    client = MongoClient(MONGO_URI, ssl=True, serverSelectionTimeoutMS=60000)
+    # Use SSL only for Atlas (mongodb+srv://), not for local MongoDB
+    use_ssl = "mongodb+srv" in MONGO_URI or "mongodb.net" in MONGO_URI
+    client = MongoClient(MONGO_URI, ssl=use_ssl, serverSelectionTimeoutMS=60000)
     db = client[MONGO_DB]
     coll = db[MONGO_COLLECTION]
 
@@ -69,8 +81,22 @@ def sync_to_mongo(limit: int = 50000):
         docs.append(doc)
 
     if docs:
-        coll.insert_many(docs, ordered=False)
-        print(f"[📥] Inserted {len(docs)} docs into MongoDB collection '{MONGO_COLLECTION}'")
+        # Insert in batches to avoid BSON size limit (16MB)
+        batch_size = 1000
+        total_inserted = 0
+        for i in range(0, len(docs), batch_size):
+            batch = docs[i:i + batch_size]
+            try:
+                coll.insert_many(batch, ordered=False)
+                total_inserted += len(batch)
+                print(f"[📥] Inserted batch {i//batch_size + 1}: {len(batch)} docs (total: {total_inserted:,})")
+            except Exception as e:
+                # Skip duplicates, continue with next batch
+                if "duplicate key" in str(e).lower():
+                    print(f"[⚠️] Batch {i//batch_size + 1}: Skipped duplicates")
+                else:
+                    raise
+        print(f"[✅] Sync complete: {total_inserted:,} docs inserted into '{MONGO_COLLECTION}'")
     else:
         print("[ℹ] No rows to sync")
 
@@ -78,5 +104,10 @@ def sync_to_mongo(limit: int = 50000):
 
 
 if __name__ == "__main__":
-    limit = int(os.getenv("MONGO_SYNC_LIMIT", "50000"))
+    limit_str = os.getenv("MONGO_SYNC_LIMIT", "0")
+    limit = int(limit_str) if limit_str and limit_str != "0" else None
+    if limit:
+        print(f"[ℹ️] Syncing up to {limit:,} rows from MySQL to MongoDB")
+    else:
+        print("[ℹ️] Syncing ALL rows from MySQL to MongoDB (no limit)")
     sync_to_mongo(limit=limit)

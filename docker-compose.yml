@@ -9,7 +9,7 @@ services:
       MYSQL_PASSWORD: Life8574!
     command: --default-authentication-plugin=mysql_native_password
     ports:
-      - "3306:3306"
+      - "5510:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./sql/001_create_database.sql:/docker-entrypoint-initdb.d/001_create_database.sql:ro
@@ -35,6 +35,80 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nyc311-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: nyc311-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  mysql-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: nyc311-mysql-exporter
+    ports:
+      - "9104:9104"
+    command:
+      - '--mysqld.username=root'
+      - '--mysqld.address=mysql:3306'
+    environment:
+      - MYSQLD_EXPORTER_PASSWORD=rootpass!
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.40
+    container_name: nyc311-mongodb-exporter
+    ports:
+      - "9216:9216"
+    environment:
+      - MONGODB_URI=mongodb://root:example@mongo:27017
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: nyc311-node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    restart: unless-stopped
+
 volumes:
   mysql_data:
   mongo_data:
+  prometheus_data:
+  grafana_data:
