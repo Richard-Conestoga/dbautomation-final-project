@@ -18,18 +18,31 @@ def generate_nyc311_sample(n_rows=25000, output_file="./data/nyc_311_2023_sample
         "Noise - Street/Sidewalk", "Blocked Driveway", "Request Large Assemblages"
     ]
     
-    # Generate ALL data as Python lists with exactly n_rows items
+    date_format = "%m/%d/%Y %I:%M:%S %p"  # Match ETL parser format
+    
     base_date = datetime(2023, 1, 1)
     
     data = {
         "unique_key": list(range(1, n_rows + 1)),
+        
+        # Generate created_date and closed_date as formatted strings per date_format
         "created_date": [
-            base_date + timedelta(days=random.randint(0, 365)) for _ in range(n_rows)
-        ],
-        "closed_date": [
-            base_date + timedelta(days=random.randint(0, 370), hours=random.randint(0, 24)) 
+            (base_date + timedelta(days=random.randint(0, 364), 
+                                   hours=random.randint(0,23), 
+                                   minutes=random.randint(0,59), 
+                                   seconds=random.randint(0,59))
+            ).strftime(date_format)
             for _ in range(n_rows)
         ],
+        "closed_date": [
+            (base_date + timedelta(days=random.randint(0, 370), 
+                                   hours=random.randint(0,23), 
+                                   minutes=random.randint(0,59), 
+                                   seconds=random.randint(0,59))
+            ).strftime(date_format)
+            for _ in range(n_rows)
+        ],
+        
         "agency": random.choices(agencies, k=n_rows),
         "complaint_type": random.choices(complaint_types, k=n_rows),
         "descriptor": ["Brief description of issue", "General complaint", "Specific problem noted"] * ((n_rows // 3) + 1),
@@ -39,7 +52,6 @@ def generate_nyc311_sample(n_rows=25000, output_file="./data/nyc_311_2023_sample
         "incident_zip": [f"10{random.randint(0,5):02d}" for _ in range(n_rows)]
     }
     
-    # Truncate descriptor list to exact length
     data["descriptor"] = data["descriptor"][:n_rows]
     
     df = pd.DataFrame(data)

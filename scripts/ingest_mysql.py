@@ -17,7 +17,7 @@ USER = os.getenv("MYSQL_USER", "root")
 PWD = os.getenv("MYSQL_PASSWORD", "")
 DB = os.getenv("MYSQL_DB", "nyc311")
 
-CSV_FILENAME = os.getenv("NYC311_CSV", "./data/311_Service_Requests_from_2011.csv")
+CSV_FILENAME = os.getenv("NYC311_CSV", "./data/nyc_311_2023_sample.csv")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "10000"))  # Tuned: balances memory (100MB/chunk) vs commit overhead
 
 # NYC 311 standard datetime format [web:21][web:23]
@@ -219,13 +219,10 @@ def insert_batch(conn, df: pd.DataFrame) -> None:
 
 
 def run_data_quality_checks(conn):
-    """Automated validation post-ingestion."""
     with conn.cursor() as cur:
-        # Basic counts
         cur.execute("SELECT COUNT(*) as total FROM service_requests")
         total = cur.fetchone()[0]
         
-        # Data ranges
         cur.execute("""
             SELECT 
                 MIN(created_date), MAX(created_date),
@@ -235,7 +232,6 @@ def run_data_quality_checks(conn):
         """)
         ranges = cur.fetchone()
         
-        # Hourly aggregation sample
         cur.execute("""
             SELECT HOUR(created_date) as hour, COUNT(*) as complaints
             FROM service_requests 
@@ -245,9 +241,15 @@ def run_data_quality_checks(conn):
         """)
         hourly_sample = cur.fetchall()
     
+    # Safe formatting: show "N/A" if None
+    def fmt(dt):
+        return dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "N/A"
+    def fmt_num(num):
+        return f"{num:.4f}" if num is not None else "N/A"
+    
     print(f"[📊] VALIDATION: {total:,} total rows")
-    print(f"[📊] Date range: {ranges[0]} → {ranges[1]}")
-    print(f"[📊] Lat/Lng bounds: {ranges[2]:.4f}/{ranges[3]:.4f}, {ranges[4]:.4f}/{ranges[5]:.4f}")
+    print(f"[📊] Date range: {fmt(ranges[0])} → {fmt(ranges[1])}")
+    print(f"[📊] Lat/Lng bounds: {fmt_num(ranges[2])}/{fmt_num(ranges[3])}, {fmt_num(ranges[4])}/{fmt_num(ranges[5])}")
     print("[📊] Hourly complaints sample:", hourly_sample[:3])
 
 
