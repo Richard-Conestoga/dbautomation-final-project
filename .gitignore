@@ -18,3 +18,5 @@ data/
 .env
 .env.local
 .env.*.local
+
+/docs
