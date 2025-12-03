@@ -9,7 +9,7 @@ services:
       MYSQL_PASSWORD: Life8574!
     command: --default-authentication-plugin=mysql_native_password
     ports:
-      - "3306:3306"
+      - "5510:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./sql/001_create_database.sql:/docker-entrypoint-initdb.d/001_create_database.sql:ro

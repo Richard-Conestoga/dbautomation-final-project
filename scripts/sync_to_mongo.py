@@ -57,8 +57,9 @@ def sync_to_mongo(limit: int = 50000):
         raise RuntimeError("MONGODB_URI is not set")
 
     rows = fetch_mysql_rows(limit=limit)
-    # Fix: Use ssl=True instead of ssl_context for GitHub Actions compatibility
-    client = MongoClient(MONGO_URI, ssl=True, serverSelectionTimeoutMS=60000)
+    # Use SSL only for Atlas (mongodb+srv://), not for local MongoDB
+    use_ssl = "mongodb+srv" in MONGO_URI or "mongodb.net" in MONGO_URI
+    client = MongoClient(MONGO_URI, ssl=use_ssl, serverSelectionTimeoutMS=60000)
     db = client[MONGO_DB]
     coll = db[MONGO_COLLECTION]
 
