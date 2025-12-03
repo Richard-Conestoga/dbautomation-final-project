@@ -1,3 +1,4 @@
+# Required installations for Python scripts
 pandas
 numpy
 pymysql
