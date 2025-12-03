@@ -1,0 +1,72 @@
+apiVersion: 1
+
+groups:
+  - name: nyc311_alerts
+    folder: NYC311 Alerts
+    interval: 1m
+    rules:
+      - uid: high_cpu_alert
+        title: High Database CPU Usage
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: '(rate(process_cpu_seconds_total{job=~"mysql|mongodb"}[5m]) * 100) > 85'
+              refId: A
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          description: 'Database CPU usage is above 85%. Current value: {{ $value }}%'
+          summary: High CPU usage detected on database
+        labels:
+          severity: critical
+
+      - uid: slow_queries_alert
+        title: Slow Database Queries
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'rate(mysql_global_status_slow_queries[5m]) > 0'
+              refId: A
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          description: 'Database has slow queries (>500ms). Rate: {{ $value }} queries/sec'
+          summary: Slow queries detected in MySQL
+        labels:
+          severity: warning
+
+      - uid: data_mismatch_alert
+        title: Cross-Database Data Mismatch
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 60
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: 'nyc311_sync_mismatch_count > 0'
+              refId: A
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          description: 'Data mismatch detected between MySQL and MongoDB. Mismatch count: {{ $value }}'
+          summary: MySQL and MongoDB are out of sync
+        labels:
+          severity: critical
