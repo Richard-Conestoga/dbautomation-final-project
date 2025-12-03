@@ -25,17 +25,25 @@ scrape_configs:
     # Don't fail if metrics server isn't running
     scrape_timeout: 5s
 
-  # MySQL Exporter (will add in next step)
-  # - job_name: 'mysql'
-  #   static_configs:
-  #     - targets: ['mysql-exporter:9104']
+  # MySQL Exporter - Database metrics (CPU, memory, queries, connections)
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql-exporter:9104']
+        labels:
+          service: 'mysql'
+          database: 'nyc311'
 
-  # MongoDB Exporter (will add in next step)
-  # - job_name: 'mongodb'
-  #   static_configs:
-  #     - targets: ['mongodb-exporter:9216']
+  # MongoDB Exporter - MongoDB metrics
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+        labels:
+          service: 'mongodb'
+          database: 'nyc311'
 
-  # Node Exporter for system metrics (will add in next step)
-  # - job_name: 'node'
-  #   static_configs:
-  #     - targets: ['node-exporter:9100']
+  # Node Exporter - System metrics (CPU, disk, memory, network)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'system'

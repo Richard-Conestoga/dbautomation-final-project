@@ -66,6 +66,47 @@ services:
       - prometheus
     restart: unless-stopped
 
+  mysql-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: nyc311-mysql-exporter
+    ports:
+      - "9104:9104"
+    command:
+      - '--mysqld.username=root'
+      - '--mysqld.address=mysql:3306'
+    environment:
+      - MYSQLD_EXPORTER_PASSWORD=rootpass!
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.40
+    container_name: nyc311-mongodb-exporter
+    ports:
+      - "9216:9216"
+    environment:
+      - MONGODB_URI=mongodb://root:example@mongo:27017
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: nyc311-node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    restart: unless-stopped
+
 volumes:
   mysql_data:
   mongo_data:
