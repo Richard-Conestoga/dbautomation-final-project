@@ -17,7 +17,7 @@ MONGO_DB = os.getenv("MONGO_DB", "nyc311")
 MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "service_requests")
 
 
-def fetch_mysql_rows(limit: int = 50000):
+def fetch_mysql_rows(limit: int = None):
     conn = pymysql.connect(
         host=MYSQL_HOST,
         port=MYSQL_PORT,
@@ -29,16 +29,27 @@ def fetch_mysql_rows(limit: int = 50000):
         cursorclass=pymysql.cursors.DictCursor,
     )
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT unique_key, created_date, closed_date, agency,
-                   complaint_type, descriptor, borough,
-                   latitude, longitude
-            FROM service_requests
-            LIMIT %s
-            """,
-            (limit,),
-        )
+        if limit and limit > 0:
+            cur.execute(
+                """
+                SELECT unique_key, created_date, closed_date, agency,
+                       complaint_type, descriptor, borough,
+                       latitude, longitude
+                FROM service_requests
+                LIMIT %s
+                """,
+                (limit,),
+            )
+        else:
+            # No limit - sync all rows (for local development)
+            cur.execute(
+                """
+                SELECT unique_key, created_date, closed_date, agency,
+                       complaint_type, descriptor, borough,
+                       latitude, longitude
+                FROM service_requests
+                """
+            )
         rows = cur.fetchall()
     
     # Convert Decimal to float for MongoDB compatibility
@@ -79,5 +90,10 @@ def sync_to_mongo(limit: int = 50000):
 
 
 if __name__ == "__main__":
-    limit = int(os.getenv("MONGO_SYNC_LIMIT", "50000"))
+    limit_str = os.getenv("MONGO_SYNC_LIMIT", "0")
+    limit = int(limit_str) if limit_str and limit_str != "0" else None
+    if limit:
+        print(f"[ℹ️] Syncing up to {limit:,} rows from MySQL to MongoDB")
+    else:
+        print("[ℹ️] Syncing ALL rows from MySQL to MongoDB (no limit)")
     sync_to_mongo(limit=limit)
