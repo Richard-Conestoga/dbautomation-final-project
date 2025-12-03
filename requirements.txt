@@ -5,3 +5,4 @@ psutil
 python-dotenv
 requests
 pymongo
+kaggle
