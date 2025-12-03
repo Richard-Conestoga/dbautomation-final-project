@@ -35,29 +35,23 @@ def parse_date_range_from_filename(filename: str) -> tuple[str, str]:
 
 
 def cleanup_previous_sync(conn_mysql, client_mongo, filename: str):
-    """Delete previous data for this sync window from both MySQL and MongoDB."""
+    """Delete previous MongoDB data only for this sync window."""
     start_date, end_date = parse_date_range_from_filename(filename)
     
-    # MySQL cleanup
-    with conn_mysql.cursor() as cur:
-        cur.execute("""
-            DELETE FROM service_requests
-            WHERE created_date >= %s AND created_date < %s
-        """, (start_date, end_date))
-        mysql_deleted = cur.rowcount
+    # MySQL: DO NOT DELETE - it's the source of truth for validation
+    print(f"[ℹ️] Preserving MySQL data for consistency validation")
+    mysql_deleted = 0
     
-    # MongoDB cleanup (same date range)
+    # MongoDB: Clean previous sync data only
     db = client_mongo[MONGO_DB]
     coll = db[MONGO_COLLECTION]
-    mongo_deleted = coll.delete_many({
-        "created_date": {
-            "$gte": start_date,
-            "$lt": end_date
-        }
-    }).deleted_count
+    result = coll.delete_many({
+        "created_date": {"$gte": start_date, "$lt": end_date}
+    })
+    mongo_deleted = result.deleted_count
     
-    print(f"[🗑️] Cleaned MySQL: {mysql_deleted:,} rows, MongoDB: {mongo_deleted:,} docs")
-    conn_mysql.commit()
+    print(f"[🗑️] MySQL: {mysql_deleted:,} (preserved), MongoDB: {mongo_deleted:,} docs")
+
 
 
 def fetch_mysql_rows(conn, start_date: str, end_date: str, limit: int = None):
