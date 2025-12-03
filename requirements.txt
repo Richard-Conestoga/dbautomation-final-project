@@ -5,4 +5,13 @@ psutil
 python-dotenv
 requests
 pymongo
-kaggle
+
+# OpenTelemetry for distributed tracing and monitoring
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-exporter-otlp>=1.20.0
+opentelemetry-instrumentation-pymysql>=0.41b0
+opentelemetry-instrumentation-pymongo>=0.41b0
+
+# Prometheus client for custom metrics
+prometheus-client>=0.17.0
