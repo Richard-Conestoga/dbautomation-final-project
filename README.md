@@ -90,6 +90,109 @@ After sync, `scripts/validate_consistency.py` and `sync_to_mongo.py`:
 
 ---
 
+## Task 2 - Advanced Logging & Monitoring
+
+### Objective
+Implement comprehensive observability stack for real-time monitoring of MySQL and MongoDB database performance, including metrics dashboards, distributed tracing, and automated alerting for cross-database synchronization.
+
+---
+
+### Approach
+
+| Step | Description |
+|------|-------------|
+| 1 | Prometheus Setup | Deploy Prometheus for metrics collection and storage |
+| 2 | Database Exporters | Configure MySQL Exporter, MongoDB Exporter, and Node Exporter |
+| 3 | Grafana Dashboards | Create auto-provisioned dashboards for performance monitoring |
+| 4 | Custom Metrics | Export validation metrics from Python scripts to Prometheus |
+| 5 | Alert Rules | Configure automated alerts for sync inconsistencies |
+| 6 | Testing & Validation | Verify end-to-end monitoring with real anomalies |
+
+---
+
+### Monitoring Stack Components
+
+**Data Sources:**
+- MySQL Exporter (port 9104) - Database performance metrics (queries, connections, slow queries)
+- MongoDB Exporter (port 9216) - Operations counters, connection pool, query execution stats
+- Node Exporter (port 9100) - System metrics (CPU, memory, disk I/O, network)
+- Custom Validation Metrics (port 8000) - Cross-database sync status
+
+**Visualization & Alerting:**
+- Prometheus (port 9090) - Metrics aggregation and storage
+- Grafana (port 3000) - Auto-provisioned dashboards and alert management
+
+---
+
+### Dashboard Panels
+
+| Panel | Metric | Purpose |
+|-------|--------|---------|
+| MySQL vs MongoDB Count | nyc311_mysql_row_count, nyc311_mongo_doc_count | Compare record counts in real-time |
+| Sync Status Indicator | nyc311_sync_status | Binary indicator (1=in sync, 0=out of sync) |
+| Sync Mismatch Count | nyc311_sync_mismatch_count | Absolute difference between databases |
+| MySQL Connections | mysql_global_status_threads_connected | Active database connections |
+| MongoDB Operations | mongodb_op_counters_total | Insert/update/delete operations per second |
+| Node CPU & Memory | node_cpu_seconds_total, node_memory_* | System resource utilization |
+
+---
+
+### Alert Rules
+
+| Alert | Condition | Purpose |
+|-------|-----------|---------|
+| Database Out of Sync | nyc311_sync_status != 1 | Triggers when databases are inconsistent |
+| Large Sync Mismatch | nyc311_sync_mismatch_count > 100 | Triggers when mismatch exceeds threshold |
+
+Alerts are auto-provisioned via Grafana configuration files and tested by:
+1. Deleting MongoDB documents to create inconsistency
+2. Running validation script to detect mismatch
+3. Verifying alert fires in Grafana UI
+4. Re-syncing databases to clear alert
+
+---
+
+### Key Features
+
+- **Auto-Provisioned Infrastructure:** Datasources, dashboards, and alerts configured via code (GitOps-ready)
+- **Real-Time Monitoring:** 10-second refresh rate for dashboard panels
+- **Custom Metrics Integration:** Python validation script exposes Prometheus-compatible metrics
+- **End-to-End Testing:** Validated with intentional data inconsistencies and successful recovery
+
+---
+
+### Architecture
+
+```
+NYC 311 Data (200k records)
+    |
+MySQL (port 5510) <--> MongoDB (port 27017)
+    |                      |
+MySQL Exporter         MongoDB Exporter
+(port 9104)            (port 9216)
+    |                      |
+    +-------> Prometheus <-+
+           (port 9090)
+    |              |
+Node Exporter   Validation Metrics
+(port 9100)     (from Python script)
+    |
+Grafana (port 3000)
+    |-- Dashboards (auto-provisioned)
+    +-- Alerts (sync status monitoring)
+```
+
+---
+
+### Performance & Telemetry
+
+- **Validation Script:** Runs on-demand to calculate sync metrics and expose via HTTP endpoint
+- **Exporter Metrics:** Collected every 15 seconds by Prometheus
+- **Dashboard Refresh:** Real-time updates every 10 seconds
+- **Alert Evaluation:** Checks every 1 minute with configurable thresholds
+
+---
+
 ## 🤖 Task 3 – Anomaly Detection & Optimization
 
 ### 📌 Objective
